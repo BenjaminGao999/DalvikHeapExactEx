@@ -1,0 +1,65 @@
+1、Activity实例内存管理
+https://developer.android.google.cn/training/basics/activity-lifecycle/stopping.html
+ 1）当您的 Activity 停止时， Activity 对象将驻留在内存中并在 Activity 继续时被再次调用。
+ 一旦您的 Activity 停止，如果需要恢复系统内存，系统可能会销毁该实例。
+ 当系统销毁您的 Activity 时，它会调用您的 Activity 的 onDestroy() 方法。
+ 在极端情况下，系统可能会仅终止应用进程，而不会调用 Activity 的最终 onDestroy() 回调。
+
+  1.2）针对同一app，用户从ActivityA进入到ActivityB，此时ActivityA处于停止状态，
+          如果在ActivityB运行期间内存告急（总的系统内存充足，而达到app的linux进程内存分配上限），则linux进程会销毁ActivityA的实例以腾出内存空间。
+  1.3）如果是总的系统内存不足，则会销毁app的进程。
+  1.4）Activity作为linux进行中独立的组件单位，和其他Activity相互独立，任意Activity享有linux进程的所有资源（主要是运行时内存）。
+
+2）如果 Activity 当前被停止或长期未使用，
+      或者前台 Activity 需要更多资源以致系统必须关闭后台进程（可能是表达错误：应改为关闭后台Activity）恢复内存，系统也可能会销毁 Activity。
+
+3)
+https://developer.android.google.cn/guide/components/activities.html#Lifecycle
+
+Activity 基本上以三种状态存在：
+  继续
+     此 Activity 位于屏幕前台并具有用户焦点。（有时也将此状态称作“运行中”。）
+  暂停
+      另一个 Activity 位于屏幕前台并具有用户焦点，但此 Activity 仍可见。
+        也就是说，另一个 Activity 显示在此 Activity 上方，并且该 Activity 部分透明或未覆盖整个屏幕。
+           暂停的 Activity 处于完全活动状态（Activity 对象保留在内存中，它保留了所有状态和成员信息，并与窗口管理器保持连接），
+               但在内存极度不足的情况下，可能会被系统终止。
+  停止
+      该 Activity 被另一个 Activity 完全遮盖（该 Activity 目前位于“后台”）。
+       已停止的 Activity 同样仍处于活动状态（Activity 对象保留在内存中，它保留了所有状态和成员信息，但未与窗口管理器连接）。
+         不过，它对用户不再可见，在他处需要内存时可能会被系统终止。
+            如果 Activity 处于暂停或停止状态，系统可通过要求其结束（调用其 finish() 方法）或直接终止其进程，将其从内存中删除。
+                 （将其结束或终止后）再次打开 Activity 时，必须重建。
+
+4)
+https://developer.android.google.cn/guide/components/tasks-and-back-stack.html#ManagingTasks
+
+后台可以同时运行多个任务。但是，如果用户同时运行多个后台任务，则系统可能会开始销毁后台 Activity，以回收内存资源，从而导致 Activity 状态丢失。
+
+
+2）内存泄漏(memory leak)
+  一般情况下，每一个app运行在单一的linux进程里，app某一处内存泄漏导致的是linux进程内存泄漏；
+  linux进程内存分配一旦超过上限，就会导致app发送OutOfMemoryError。
+
+2、Fragment
+1)
+仅当您在移除片段的事务执行期间通过调用 addToBackStack() 显式请求保存实例时，系统才会将片段放入由宿主 Activity 管理的返回栈。
+
+2)
+当您移除或替换一个片段并向返回栈添加事务时，系统会停止（而非销毁）移除的片段。
+如果用户执行回退操作进行片段恢复，该片段将重新启动。 如果您不向返回栈添加事务，则系统会在您移除或替换片段时将其销毁。
+
+3）Fragment占用too much memory
+
+3.1)http://stackoverflow.com/questions/28483600/android-fragments-on-backstack-taking-up-too-much-memory
+
+WHAT IS GOING ON?: You're adding fragments to the Backstack.
+The backstack stores a hard reference to the Fragment, not weak or soft. (source)
+
+Now who stores a backstack? FragmentManager and… as you guessed, it uses a hard live reference as well (source).
+
+And finally, each activity contains a hard reference to the FragmentManager.
+
+In short: until your activity dies, all the references to its fragments will exist in memory.
+ Regardless of add/remove operations that happened at Fragment Manager level / backstack.
+
